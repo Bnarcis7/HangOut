@@ -3,12 +3,10 @@ import Credentials from "next-auth/providers/credentials"
 import Google from "next-auth/providers/google"
 import prisma from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import { authConfig } from "./auth.config"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  session: { strategy: "jwt" },
-  pages: {
-    signIn: "/auth/signin",
-  },
+  ...authConfig,
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -53,26 +51,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    authorized({ request, auth }) {
-      const { pathname } = request.nextUrl
-      const isLoggedIn = !!auth
-      const isOnDashboard = pathname.startsWith('/dashboard')
-      const isOnRoom = pathname.startsWith('/room')
-      const isOnAuth = pathname.startsWith('/auth')
-
-      // Protect dashboard and room routes
-      if ((isOnDashboard || isOnRoom) && !isLoggedIn) {
-        return false
-      }
-
-      // Redirect logged-in users away from auth pages
-      if (isOnAuth && isLoggedIn) {
-        const redirectUrl = new URL('/dashboard', request.url)
-        return Response.redirect(redirectUrl)
-      }
-
-      return true
-    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id
