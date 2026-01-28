@@ -1,0 +1,203 @@
+// HangOut - Social Planning App Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// User model for authentication
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String?
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  createdRooms  Room[]    @relation("CreatedRooms")
+  memberships   RoomMember[]
+  nominations   Nomination[]
+  votes         Vote[]
+  orders        Order[]
+}
+
+// NextAuth Account model
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([provider, providerAccountId])
+}
+
+// NextAuth Session model
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// NextAuth Verification Token
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  
+  @@unique([identifier, token])
+}
+
+// Main HangoutRoom model
+model Room {
+  id            String     @id @default(cuid())
+  name          String
+  type          RoomType
+  status        RoomStatus @default(PLANNING)
+  inviteCode    String     @unique @default(cuid())
+  description   String?
+  scheduledFor  DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  // Creator
+  creator       User       @relation("CreatedRooms", fields: [creatorId], references: [id], onDelete: Cascade)
+  creatorId     String
+  
+  // Relations
+  members       RoomMember[]
+  nominations   Nomination[]
+  
+  // Winner/selected item
+  selectedNominationId String?
+  
+  // Settings (JSON for flexibility)
+  settings      Json?
+  
+  @@index([creatorId])
+  @@index([inviteCode])
+}
+
+// Room membership model
+model RoomMember {
+  id        String     @id @default(cuid())
+  role      MemberRole @default(PARTICIPANT)
+  joinedAt  DateTime   @default(now())
+  
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  room      Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId    String
+  
+  @@unique([userId, roomId])
+  @@index([roomId])
+  @@index([userId])
+}
+
+// Nomination model (restaurants, movies, games, etc.)
+model Nomination {
+  id            String          @id @default(cuid())
+  title         String          // Restaurant name, Movie title, Game name, Drink name
+  description   String?         // Additional details
+  type          NominationType
+  createdAt     DateTime        @default(now())
+  
+  // Flexible metadata stored as JSON
+  // Restaurant: { address, cuisine, priceRange, placeId, rating, photos, menuUrl }
+  // Movie: { genre, runtime, tmdbId, imdbId, rating, plot, poster, year, trailerUrl }
+  // Game: { playerCount, duration, complexity, bggId, rating }
+  // Drink: { drinkType, ingredients, recipe }
+  // Takeout: { cuisine, deliveryPlatform }
+  metadata      Json?
+  
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  room          Room            @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId        String
+  votes         Vote[]
+  
+  @@index([roomId])
+  @@index([userId])
+}
+
+// Vote model
+model Vote {
+  id            String     @id @default(cuid())
+  createdAt     DateTime   @default(now())
+  
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  nomination    Nomination @relation(fields: [nominationId], references: [id], onDelete: Cascade)
+  nominationId  String
+  
+  @@unique([userId, nominationId])
+  @@index([nominationId])
+}
+
+// Order model for bill splitting
+model Order {
+  id        String   @id @default(cuid())
+  items     Json     // Array of { name, price }
+  subtotal  Float
+  tax       Float    @default(0)
+  tip       Float    @default(0)
+  total     Float
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  roomId    String
+  
+  @@index([userId])
+  @@index([roomId])
+}
+
+// Enums
+enum RoomType {
+  RESTAURANT
+  HOME_TAKEOUT
+  HOME_DRINKS
+  HOME_GAMES
+  MOVIE_NIGHT
+  CUSTOM
+}
+
+enum RoomStatus {
+  PLANNING
+  VOTING
+  DECIDED
+  COMPLETED
+  ARCHIVED
+}
+
+enum MemberRole {
+  CREATOR
+  PARTICIPANT
+}
+
+enum NominationType {
+  RESTAURANT
+  MOVIE
+  GAME
+  DRINK
+  CUSTOM
+}
