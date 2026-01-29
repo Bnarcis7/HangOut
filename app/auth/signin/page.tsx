@@ -20,18 +20,23 @@ export default function SignInPage() {
 
     try {
       const result = await signIn('credentials', {
-        email,
+        email: email.toLowerCase(),
         password,
         redirect: false,
       })
 
+      console.log('Sign in result:', result)
+
       if (result?.error) {
         setError('Invalid email or password')
-      } else {
+      } else if (result?.ok) {
         router.push('/dashboard')
         router.refresh()
+      } else {
+        setError('Sign in failed. Please try again.')
       }
-    } catch {
+    } catch (err) {
+      console.error('Sign in error:', err)
       setError('An error occurred. Please try again.')
     } finally {
       setLoading(false)
