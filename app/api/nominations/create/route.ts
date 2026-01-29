@@ -14,38 +14,53 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { roomId, title, description, type, metadata } = body
+    const { hangoutId, title, description, type, metadata } = body
 
     // Validate required fields
-    if (!roomId || !title || !type) {
+    if (!hangoutId || !title || !type) {
       return NextResponse.json(
-        { message: 'Missing required fields: roomId, title, type' },
+        { message: 'Missing required fields: hangoutId, title, type' },
         { status: 400 }
       )
     }
 
-    // Verify user is a member of the room
-    const membership = await prisma.roomMember.findFirst({
-      where: {
-        roomId,
-        userId: session.user.id,
+    // Verify hangout exists and user has access to it
+    const hangout = await prisma.hangout.findUnique({
+      where: { id: hangoutId },
+      include: {
+        room: {
+          include: {
+            members: {
+              where: {
+                userId: session.user.id,
+              },
+            },
+          },
+        },
       },
     })
 
-    if (!membership) {
+    if (!hangout) {
+      return NextResponse.json(
+        { message: 'Hangout not found' },
+        { status: 404 }
+      )
+    }
+
+    if (hangout.room.members.length === 0) {
       return NextResponse.json(
         { message: 'You are not a member of this room' },
         { status: 403 }
       )
     }
 
-    // Determine nomination type based on room type
+    // Determine nomination type based on hangout type
     let nominationType: 'RESTAURANT' | 'MOVIE' | 'GAME' | 'DRINK' | 'CUSTOM' = 'CUSTOM'
     if (type === 'RESTAURANT' || type === 'HOME_TAKEOUT') {
       nominationType = 'RESTAURANT'
     } else if (type === 'MOVIE_NIGHT') {
       nominationType = 'MOVIE'
-    } else if (type === 'HOME_GAMES') {
+    } else if (type === 'HOME_GAMES' || type === 'GAME_NIGHT') {
       nominationType = 'GAME'
     } else if (type === 'HOME_DRINKS') {
       nominationType = 'DRINK'
@@ -59,7 +74,7 @@ export async function POST(request: NextRequest) {
         type: nominationType,
         metadata: metadata || {},
         userId: session.user.id,
-        roomId,
+        hangoutId,
       },
       include: {
         user: {
@@ -74,10 +89,10 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Update room status to VOTING if it's still in PLANNING
-    await prisma.room.updateMany({
+    // Update hangout status to VOTING if it's still in PLANNING
+    await prisma.hangout.updateMany({
       where: {
-        id: roomId,
+        id: hangoutId,
         status: 'PLANNING',
       },
       data: {

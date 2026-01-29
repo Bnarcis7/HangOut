@@ -11,19 +11,43 @@ interface CreateRoomModalProps {
 export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProps) {
   const router = useRouter()
   const [name, setName] = useState('')
-  const [type, setType] = useState('RESTAURANT')
   const [description, setDescription] = useState('')
+  const [memberEmails, setMemberEmails] = useState<string[]>([])
+  const [emailInput, setEmailInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const roomTypes = [
-    { value: 'RESTAURANT', label: 'Restaurant', icon: '🍽️' },
-    { value: 'HOME_TAKEOUT', label: 'Home Takeout', icon: '🏠' },
-    { value: 'HOME_DRINKS', label: 'Drinks at Home', icon: '🍹' },
-    { value: 'HOME_GAMES', label: 'Game Night', icon: '🎲' },
-    { value: 'MOVIE_NIGHT', label: 'Movie Night', icon: '🎬' },
-    { value: 'CUSTOM', label: 'Custom', icon: '✨' },
-  ]
+  const handleAddEmail = () => {
+    const email = emailInput.trim().toLowerCase()
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    
+    if (!email) return
+    
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address')
+      return
+    }
+    
+    if (memberEmails.includes(email)) {
+      setError('This email is already added')
+      return
+    }
+    
+    setMemberEmails([...memberEmails, email])
+    setEmailInput('')
+    setError('')
+  }
+
+  const handleRemoveEmail = (email: string) => {
+    setMemberEmails(memberEmails.filter(e => e !== email))
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleAddEmail()
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,7 +60,11 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, type, description }),
+        body: JSON.stringify({ 
+          name, 
+          description,
+          memberEmails 
+        }),
       })
 
       const data = await response.json()
@@ -49,11 +77,13 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
 
       // Reset form and close modal
       setName('')
-      setType('RESTAURANT')
       setDescription('')
+      setMemberEmails([])
+      setEmailInput('')
       onClose()
       
-      // Refresh to show new room
+      // Redirect to the new room
+      router.push(`/room/${data.room.id}`)
       router.refresh()
     } catch {
       setError('An error occurred. Please try again.')
@@ -87,7 +117,7 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
 
           <div>
             <label htmlFor="name" className="block text-[12px] sm:text-[13px] font-medium text-gray-700 mb-2">
-              Room Name
+              Room Name *
             </label>
             <input
               type="text"
@@ -96,35 +126,11 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
               onChange={(e) => setName(e.target.value)}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition text-[13px] sm:text-[14px]"
-              placeholder="Friday Night Dinner"
+              placeholder="Friday Night Crew"
             />
-          </div>
-
-          <div>
-            <label className="block text-[12px] sm:text-[13px] font-medium text-gray-700 mb-3">
-              Room Type
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {roomTypes.map((roomType) => (
-                <button
-                  key={roomType.value}
-                  type="button"
-                  onClick={() => setType(roomType.value)}
-                  className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border-2 transition-all text-left ${
-                    type === roomType.value
-                      ? 'border-gray-900 bg-gray-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg sm:text-xl">{roomType.icon}</span>
-                    <span className="text-[12px] sm:text-[13px] font-medium text-gray-900">
-                      {roomType.label}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
+            <p className="text-[11px] text-gray-500 mt-1">
+              Create a group for your friends to plan hangouts together
+            </p>
           </div>
 
           <div>
@@ -135,10 +141,64 @@ export default function CreateRoomModal({ isOpen, onClose }: CreateRoomModalProp
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={3}
+              rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition text-[13px] sm:text-[14px] resize-none"
-              placeholder="Add any details about this hangout..."
+              placeholder="Weekly hangouts with the crew..."
             />
+          </div>
+
+          <div>
+            <label htmlFor="email" className="block text-[12px] sm:text-[13px] font-medium text-gray-700 mb-2">
+              Invite Members (Optional)
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                id="email"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition text-[13px] sm:text-[14px]"
+                placeholder="friend@example.com"
+              />
+              <button
+                type="button"
+                onClick={handleAddEmail}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-[12px] sm:text-[13px] font-medium"
+              >
+                Add
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-500 mt-1">
+              Press Enter or click Add to invite members by email
+            </p>
+            
+            {memberEmails.length > 0 && (
+              <div className="mt-3 space-y-2">
+                <p className="text-[11px] font-medium text-gray-700">
+                  Invited Members ({memberEmails.length}):
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {memberEmails.map((email) => (
+                    <div
+                      key={email}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 rounded-lg text-[12px] text-gray-700"
+                    >
+                      <span>{email}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveEmail(email)}
+                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 sm:gap-3 pt-2">

@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { name, type, description } = body
+    const { name, description, memberEmails = [] } = body
 
     // Validate input
     if (!name || name.trim().length < 2) {
@@ -25,33 +25,63 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!type) {
-      return NextResponse.json(
-        { message: 'Room type is required' },
-        { status: 400 }
-      )
-    }
-
     // Generate unique invite code
     const inviteCode = nanoid(10)
 
-    // Create room and add creator as member
+    // Find or create users for invited emails
+    const memberUsers = []
+    for (const email of memberEmails) {
+      const emailLower = email.toLowerCase().trim()
+      
+      // Skip if it's the creator's email
+      if (emailLower === session.user.email?.toLowerCase()) {
+        continue
+      }
+      
+      // Find existing user or skip (we'll send invite later)
+      const existingUser = await prisma.user.findUnique({
+        where: { email: emailLower },
+      })
+      
+      if (existingUser) {
+        memberUsers.push(existingUser.id)
+      }
+      // TODO: Send email invitation to non-existing users
+    }
+
+    // Create room and add creator + invited members
     const room = await prisma.room.create({
       data: {
         name: name.trim(),
-        type,
         description: description?.trim() || null,
         inviteCode,
         creatorId: session.user.id,
         members: {
-          create: {
-            userId: session.user.id,
-            role: 'CREATOR',
-          },
+          create: [
+            {
+              userId: session.user.id,
+              role: 'CREATOR',
+            },
+            ...memberUsers.map((userId) => ({
+              userId,
+              role: 'PARTICIPANT' as const,
+            })),
+          ],
         },
       },
       include: {
-        members: true,
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+              },
+            },
+          },
+        },
       },
     })
 
