@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import MovieSearch from './MovieSearch'
 
 interface AddNominationModalProps {
   isOpen: boolean
@@ -43,9 +44,24 @@ export default function AddNominationModal({
   // Movie fields
   const [genre, setGenre] = useState('')
   const [runtime, setRuntime] = useState('')
+  const [posterUrl, setPosterUrl] = useState('')
   
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const handleMovieSelect = (movie: {
+    title: string
+    genre: string
+    runtime: string
+    description: string
+    posterUrl: string | null
+  }) => {
+    setTitle(movie.title)
+    setGenre(movie.genre)
+    setRuntime(movie.runtime)
+    setDescription(movie.description)
+    setPosterUrl(movie.posterUrl || '')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -88,6 +104,7 @@ export default function AddNominationModal({
         nominationData.metadata = {
           genre,
           runtime,
+          posterUrl,
         }
       }
 
@@ -375,6 +392,29 @@ export default function AddNominationModal({
           {/* Movie fields */}
           {roomType === 'MOVIE_NIGHT' && (
             <>
+              <div>
+                <label htmlFor="movieSearch" className="block text-[12px] sm:text-[13px] font-medium text-gray-700 mb-2">
+                  Search Movie
+                </label>
+                <MovieSearch onSelect={handleMovieSelect} />
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Start typing to search for a movie
+                </p>
+              </div>
+              <div>
+                <label htmlFor="title" className="block text-[12px] sm:text-[13px] font-medium text-gray-700 mb-2">
+                  Movie Title *
+                </label>
+                <input
+                  type="text"
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition text-[13px] sm:text-[14px]"
+                  placeholder="Movie title"
+                />
+              </div>
               <div>
                 <label htmlFor="genre" className="block text-[12px] sm:text-[13px] font-medium text-gray-700 mb-2">
                   Genre
