@@ -9,7 +9,9 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    // Use DATABASE_URL from environment or a placeholder for build time
-    url: process.env.DATABASE_URL || "postgresql://placeholder:placeholder@localhost:5432/placeholder",
+    // Use DATABASE_URL from environment
+    // SQLite for local: file:./dev.db
+    // PostgreSQL for production: postgresql://...
+    url: process.env.DATABASE_URL || "file:./dev.db",
   },
 });

@@ -3,12 +3,17 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 
 const prismaClientSingleton = () => {
-  const connectionString = process.env.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder'
+  const connectionString = process.env.DATABASE_URL || 'file:./dev.db'
   
-  const pool = new Pool({ connectionString })
-  const adapter = new PrismaPg(pool)
+  // Use PostgreSQL adapter for production (postgresql:// URLs)
+  if (connectionString.startsWith('postgresql://') || connectionString.startsWith('postgres://')) {
+    const pool = new Pool({ connectionString })
+    const adapter = new PrismaPg(pool)
+    return new PrismaClient({ adapter })
+  }
   
-  return new PrismaClient({ adapter })
+  // Use direct client for SQLite (file: URLs) in development
+  return new PrismaClient()
 }
 
 declare const globalThis: {
