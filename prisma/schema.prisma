@@ -24,6 +24,7 @@ model User {
   sessions      Session[]
   createdRooms  Room[]    @relation("CreatedRooms")
   memberships   RoomMember[]
+  createdHangouts Hangout[] @relation("CreatedHangouts")
   nominations   Nomination[]
   votes         Vote[]
   orders        Order[]
@@ -67,15 +68,12 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// Main HangoutRoom model
+// Main Room model (Group/Community)
 model Room {
   id            String     @id @default(cuid())
   name          String
-  type          RoomType
-  status        RoomStatus @default(PLANNING)
   inviteCode    String     @unique @default(cuid())
   description   String?
-  scheduledFor  DateTime?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   
@@ -85,10 +83,7 @@ model Room {
   
   // Relations
   members       RoomMember[]
-  nominations   Nomination[]
-  
-  // Winner/selected item
-  selectedNominationId String?
+  hangouts      Hangout[]
   
   // Settings (JSON for flexibility)
   settings      Json?
@@ -113,6 +108,38 @@ model RoomMember {
   @@index([userId])
 }
 
+// Hangout model (Specific event/outing within a room)
+model Hangout {
+  id            String       @id @default(cuid())
+  name          String
+  type          HangoutType
+  status        HangoutStatus @default(PLANNING)
+  description   String?
+  scheduledFor  DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  // Creator
+  creator       User         @relation("CreatedHangouts", fields: [creatorId], references: [id], onDelete: Cascade)
+  creatorId     String
+  
+  // Room this hangout belongs to
+  room          Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId        String
+  
+  // Relations
+  nominations   Nomination[]
+  
+  // Winner/selected item
+  selectedNominationId String?
+  
+  // Settings (JSON for flexibility)
+  settings      Json?
+  
+  @@index([roomId])
+  @@index([creatorId])
+}
+
 // Nomination model (restaurants, movies, games, etc.)
 model Nomination {
   id            String          @id @default(cuid())
@@ -131,11 +158,11 @@ model Nomination {
   
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        String
-  room          Room            @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  roomId        String
+  hangout       Hangout         @relation(fields: [hangoutId], references: [id], onDelete: Cascade)
+  hangoutId     String
   votes         Vote[]
   
-  @@index([roomId])
+  @@index([hangoutId])
   @@index([userId])
 }
 
@@ -165,23 +192,24 @@ model Order {
   
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
-  roomId    String
+  hangoutId String
   
   @@index([userId])
-  @@index([roomId])
+  @@index([hangoutId])
 }
 
 // Enums
-enum RoomType {
+enum HangoutType {
   RESTAURANT
   HOME_TAKEOUT
   HOME_DRINKS
   HOME_GAMES
   MOVIE_NIGHT
+  GAME_NIGHT
   CUSTOM
 }
 
-enum RoomStatus {
+enum HangoutStatus {
   PLANNING
   VOTING
   DECIDED
