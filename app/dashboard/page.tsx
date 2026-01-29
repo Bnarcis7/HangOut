@@ -23,8 +23,14 @@ export default async function DashboardPage() {
           _count: {
             select: {
               members: true,
-              nominations: true,
+              hangouts: true,
             },
+          },
+          hangouts: {
+            orderBy: {
+              createdAt: 'desc',
+            },
+            take: 1,
           },
         },
       },
@@ -129,16 +135,15 @@ export default async function DashboardPage() {
             <div className="flex items-start justify-between mb-2 sm:mb-3">
               <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gray-100 rounded-lg sm:rounded-xl flex items-center justify-center">
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
               </div>
             </div>
-            <p className="text-[12px] sm:text-[13px] font-medium text-gray-500 mb-1">Active</p>
+            <p className="text-[12px] sm:text-[13px] font-medium text-gray-500 mb-1">Total Members</p>
             <p className="text-[28px] sm:text-[32px] font-semibold text-gray-900 tracking-tight">
               {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                userRooms.filter((rm: any) => rm.room.status === "PLANNING")
-                  .length
+                userRooms.reduce((acc: number, rm: any) => acc + rm.room._count.members, 0)
               }
             </p>
           </div>
@@ -147,16 +152,15 @@ export default async function DashboardPage() {
             <div className="flex items-start justify-between mb-2 sm:mb-3">
               <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gray-100 rounded-lg sm:rounded-xl flex items-center justify-center">
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
             </div>
-            <p className="text-[12px] sm:text-[13px] font-medium text-gray-500 mb-1">Completed</p>
+            <p className="text-[12px] sm:text-[13px] font-medium text-gray-500 mb-1">Total Hangouts</p>
             <p className="text-[28px] sm:text-[32px] font-semibold text-gray-900 tracking-tight">
               {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                userRooms.filter((rm: any) => rm.room.status === "COMPLETED")
-                  .length
+                userRooms.reduce((acc: number, rm: any) => acc + (rm.room._count?.hangouts || 0), 0)
               }
             </p>
           </div>
@@ -192,23 +196,7 @@ export default async function DashboardPage() {
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {userRooms.map((roomMember: any) => {
                 const { room } = roomMember;
-                const typeEmoji: Record<string, string> = {
-                  RESTAURANT: "🍽️",
-                  HOME_TAKEOUT: "🏠",
-                  HOME_DRINKS: "🍹",
-                  HOME_GAMES: "🎲",
-                  MOVIE_NIGHT: "🎬",
-                  GAME_NIGHT: "🎮",
-                  CUSTOM: "🎉",
-                };
-
-                const statusStyles: Record<string, string> = {
-                  PLANNING: "bg-blue-50 text-blue-700 border-blue-200",
-                  VOTING: "bg-purple-50 text-purple-700 border-purple-200",
-                  DECIDED: "bg-green-50 text-green-700 border-green-200",
-                  COMPLETED: "bg-gray-100 text-gray-600 border-gray-200",
-                  ARCHIVED: "bg-gray-100 text-gray-500 border-gray-200",
-                };
+                const latestHangout = room.hangouts?.[0];
 
                 return (
                   <Link
@@ -219,7 +207,7 @@ export default async function DashboardPage() {
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                         <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gray-100 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-gray-200 transition-colors">
-                          <span className="text-base sm:text-lg">{typeEmoji[room.type] || "📁"}</span>
+                          <span className="text-base sm:text-lg">�</span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-1.5 flex-wrap">
@@ -237,26 +225,25 @@ export default async function DashboardPage() {
                               <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                               </svg>
-                              <span className="hidden xs:inline">{room._count.members}</span>
+                              <span className="hidden xs:inline">{room._count.members} members</span>
                               <span className="xs:hidden">{room._count.members}m</span>
                             </span>
                             <span className="flex items-center gap-1 sm:gap-1.5 hidden xs:flex">
                               <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                               </svg>
-                              {room._count.nominations}
+                              {room._count?.hangouts || 0} hangouts
                             </span>
+                            {latestHangout && (
+                              <span className="text-[11px] text-gray-400 hidden sm:inline">
+                                Latest: {latestHangout.name}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-                        <span
-                          className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg text-[11px] sm:text-[12px] font-medium border ${statusStyles[room.status] || "bg-gray-100 text-gray-600 border-gray-200"}`}
-                        >
-                          <span className="hidden sm:inline">{room.status.charAt(0) + room.status.slice(1).toLowerCase()}</span>
-                          <span className="sm:hidden">{room.status.charAt(0)}</span>
-                        </span>
-                        <button className="text-gray-400 hover:text-gray-600 transition-colors hidden sm:block">
+                        <button className="text-gray-400 hover:text-gray-600 transition-colors">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
